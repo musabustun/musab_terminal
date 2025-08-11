@@ -15,8 +15,6 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [currentDir, setCurrentDir] = useState<string[]>([]); // relative to basePath
   const [awaitingPassword, setAwaitingPassword] = useState<boolean>(false);
-  const [pendingSudoCommand, setPendingSudoCommand] = useState<string | null>(null);
-  const [sudoAttempts, setSudoAttempts] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -405,15 +403,9 @@ const App: React.FC = () => {
       return;
     }
 
-    // sudo
+    // sudo (disabled)
     if (lowered === 'sudo') {
-      if (args.length === 0) {
-        return typeWriter(['usage: sudo <command>'], { charDelayMs: 0, lineDelayMs: 10 });
-      }
-      setAwaitingPassword(true);
-      setPendingSudoCommand(args.join(' '));
-      setSudoAttempts(0);
-      return typeWriter([`[sudo] password for musab:`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: raw });
+      return typeWriter(['sudo: işlem red edildi'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: raw });
     }
 
     // theme
@@ -633,27 +625,12 @@ const App: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentInput.trim() && !isTyping) {
-      // handle sudo password prompt
+      // sudo password prompt flow disabled; ignore awaitingPassword
       if (awaitingPassword) {
-        const entered = currentInput;
         setCurrentInput('');
-        if (entered !== 'musab') {
-          const attempts = sudoAttempts + 1;
-          setSudoAttempts(attempts);
-          if (attempts >= 3) {
-            setAwaitingPassword(false);
-            setPendingSudoCommand(null);
-            typeWriter(['sudo: 3 incorrect password attempts'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
-            return;
-          }
-          typeWriter(['Sorry, try again.', `[sudo] password for musab:`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
-          return;
-        }
-        // success
         setAwaitingPassword(false);
-        setSudoAttempts(0);
-        typeWriter([`musab is not in the sudoers file. This incident will be reported.`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: `sudo ${pendingSudoCommand || ''}` });
-        setPendingSudoCommand(null);
+        
+        typeWriter(['sudo: işlem red edildi'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
         return;
       }
 

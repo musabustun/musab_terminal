@@ -177,7 +177,7 @@ const App: React.FC = () => {
     resume: {
       description: "Download CV/Resume",
       output: [
-        "$ wget https://musabustun.dev/resume.pdf",
+        "$ wget https://musabustun.xyz/resume.pdf",
         "",
         "📄 Resume Download",
         "├── Format: PDF",
@@ -444,7 +444,7 @@ const App: React.FC = () => {
       return typeWriter(commands.linkedin.output, { charDelayMs: 0, lineDelayMs: 10 });
     }
     if (lowered === 'resume') {
-      window.open('https://musabustun.dev/resume.pdf', '_blank');
+      window.open('https://musabustun.xyz/resume.pdf', '_blank');
       return typeWriter(commands.resume.output, { charDelayMs: 0, lineDelayMs: 10 });
     }
 

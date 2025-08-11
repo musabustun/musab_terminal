@@ -769,10 +769,10 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-gray-900 p-4 font-mono text-gray-900 dark:text-gray-100">
+    <div className="min-h-dvh bg-gray-100 dark:bg-gray-900 p-4 pt-safe pb-safe font-mono text-gray-900 dark:text-gray-100">
       <div className="max-w-5xl mx-auto">
         {/* Terminal Window */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl border border-gray-200 dark:border-gray-700 overflow-hidden terminal-window">
           {/* macOS Window Header */}
           <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 flex items-center justify-between border-b border-gray-200 dark:border-gray-600">
             <div className="flex items-center space-x-3">
@@ -787,7 +787,7 @@ const App: React.FC = () => {
             <div className="flex items-center gap-2">
               <button
                 onClick={toggleTheme}
-                className="flex items-center gap-1 px-2 py-1 rounded-md text-xs font-medium border border-gray-200 dark:border-gray-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
+                className="flex items-center gap-1 px-3 py-2 md:px-2 md:py-1 rounded-md text-sm md:text-xs font-medium border border-gray-200 dark:border-gray-500 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-600"
                 aria-label="Toggle theme"
               >
                 {theme === 'dark' ? <Moon className="w-3 h-3" /> : <Sun className="w-3 h-3" />}
@@ -797,14 +797,14 @@ const App: React.FC = () => {
           </div>
 
           {/* Command Shortcuts */}
-          <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600">
-            <div className="flex flex-wrap gap-2">
+          <div className="bg-gray-50 dark:bg-gray-700 px-4 py-3 border-b border-gray-200 dark:border-gray-600 overflow-x-auto no-scrollbar" aria-label="Command shortcuts">
+            <div className="flex flex-nowrap gap-2 min-w-full pr-2">
               {Object.keys(commands).filter(cmd => !['clear', 'date', 'pwd', 'ls'].includes(cmd)).map((cmd) => (
                 <button
                   key={cmd}
                   onClick={() => handleCommandClick(cmd)}
                   disabled={isTyping}
-                  className="flex items-center space-x-1 px-3 py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-xs font-medium text-gray-700 dark:text-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
+                  className="flex items-center space-x-1 px-3 py-2 md:py-1.5 bg-white dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-md text-sm md:text-xs font-medium text-gray-700 dark:text-gray-200 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-sm"
                 >
                   {cmd === 'about' && <User className="w-3 h-3" />}
                   {cmd === 'projects' && <Folder className="w-3 h-3" />}
@@ -821,7 +821,9 @@ const App: React.FC = () => {
           {/* Terminal Content */}
           <div 
             ref={terminalRef}
-            className="h-96 sm:h-[500px] overflow-y-auto p-4 cursor-text bg-white dark:bg-gray-900"
+            className="h-[65dvh] md:h-[500px] overflow-y-auto no-scrollbar p-4 cursor-text bg-white dark:bg-gray-900"
+            role="log"
+            aria-live="polite"
             onClick={handleTerminalClick}
           >
             {/* Command History */}
@@ -837,8 +839,8 @@ const App: React.FC = () => {
                     ) : (
                       <>
                         <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
-                        <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-                        <span className="text-gray-600 dark:text-gray-300">{cmd.cwd}</span>
+                        <span className="text-gray-400 dark:text-gray-400 mx-1 hidden sm:inline">:</span>
+                        <span className="text-gray-600 dark:text-gray-300 hidden sm:inline">{cmd.cwd}</span>
                         <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
                         <span className="ml-1">{cmd.input}</span>
                       </>
@@ -860,8 +862,8 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
-                  <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-                  <span className="text-gray-600 dark:text-gray-300">{displayPath()}</span>
+                  <span className="text-gray-400 dark:text-gray-400 mx-1 hidden sm:inline">:</span>
+                  <span className="text-gray-600 dark:text-gray-300 hidden sm:inline">{displayPath()}</span>
                   <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
                 </>
               )}
@@ -873,6 +875,11 @@ const App: React.FC = () => {
                 onKeyDown={handleKeyDown}
                 disabled={isTyping}
                 className="ml-2 bg-transparent outline-none flex-1 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+                inputMode="text"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
+                enterKeyHint={isChatting ? 'send' : 'go'}
                 placeholder={isTyping ? "Processing..." : (isChatting ? "Type your message... (/bye to exit)" : "Enter command...")}
               />
               {!isTyping && (

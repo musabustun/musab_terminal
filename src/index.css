@@ -84,15 +84,15 @@ input:focus-visible {
 /* Responsive typography */
 @media (max-width: 640px) {
   body {
-    font-size: 14px;
-    line-height: 1.5;
+    font-size: 15px;
+    line-height: 1.6;
   }
 }
 
 @media (max-width: 480px) {
   body {
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 14px;
+    line-height: 1.55;
   }
 }
 
@@ -104,6 +104,33 @@ input:focus-visible {
 /* Smooth transitions */
 * {
   transition: color 0.15s ease-in-out, background-color 0.15s ease-in-out, border-color 0.15s ease-in-out;
+}
+
+/* Hide scrollbar utility while preserving scrollability */
+.no-scrollbar {
+  -ms-overflow-style: none; /* IE and Edge */
+  scrollbar-width: none; /* Firefox */
+}
+.no-scrollbar::-webkit-scrollbar {
+  width: 0px;
+  height: 0px;
+  background: transparent; /* Chrome/Safari */
+}
+
+/* iOS notch safe areas */
+.pt-safe {
+  padding-top: max(env(safe-area-inset-top), 1rem);
+}
+.pb-safe {
+  padding-bottom: max(env(safe-area-inset-bottom), 1rem);
+}
+
+/* Improve horizontal scrolling on command shortcuts */
+.horizontal-scroll-snap {
+  scroll-snap-type: x proximity;
+}
+.horizontal-scroll-snap > * {
+  scroll-snap-align: start;
 }
 
 /* Terminal cursor animation */

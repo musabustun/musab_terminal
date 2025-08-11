@@ -445,7 +445,7 @@ const App: React.FC = () => {
       setChatSessionId(id);
       setChatHistory([]);
       return typeWriter([
-        'n8n AI chat session started.',
+        'mAI chat session started.',
         "Type your message. Use '/bye' to exit.",
       ], { charDelayMs: 0, lineDelayMs: 10, isChat: true });
     }

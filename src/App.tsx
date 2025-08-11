@@ -874,7 +874,7 @@ const App: React.FC = () => {
                 onChange={(e) => setCurrentInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 disabled={isTyping}
-                className="ml-2 bg-transparent outline-none flex-1 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
+                className="ml-2 bg-transparent outline-none flex-1 text-base md:text-base text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                 inputMode="text"
                 autoCapitalize="none"
                 autoCorrect="off"

@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+
+# Primary sitemap
+Sitemap: https://musabustun.xyz/sitemap.xml
+
+# Preferred host
+Host: musabustun.xyz
+
+# Optional: location of LLMs profile
+# LLMS: https://musabustun.xyz/llms.txt
+
+

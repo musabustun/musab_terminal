@@ -1,0 +1,56 @@
+# LLMs Profile for Musab Ustun
+# Purpose: Provide machine-readable facts for AI assistants and web crawlers
+
+name: Musab Ustun
+aliases: musab, musab ustun
+title: Senior Software Engineer
+age: 18
+location: Turkey
+languages: Turkish, English
+
+summary: >
+  Musab Ustun is an 18-year-old Senior Software Engineer and student focused on
+  full-stack web development and system design. He builds modern, maintainable
+  web applications and developer tooling, with a passion for clear code and great UX.
+
+strengths:
+  - Full-stack JavaScript/TypeScript development
+  - Modern frontend frameworks
+  - System architecture and API design
+  - Performance optimization and DX improvements
+
+skills:
+  frontend:
+    - React, Next.js, Vite
+    - TypeScript, modern CSS, TailwindCSS
+  backend:
+    - Node.js, Express
+    - Python, Django (experience)
+    - RESTful APIs, authentication, database design
+  devops:
+    - Git/GitHub, CI/CD, Docker (experience)
+
+notable_projects:
+  - E-Commerce Platform (React, Node.js, PostgreSQL): payment integration, admin panel
+  - Real-Time Analytics Dashboard (Vue.js, Python, Redis): live visualization, alerts
+  - Mobile-First SaaS (Next.js, TypeScript, Prisma): multi-tenant, responsive UI
+
+contact:
+  email: musab.ustun@example.com
+  github: https://github.com/musabustun
+  linkedin: https://linkedin.com/in/musabustun
+  website: https://musabustun.xyz
+
+meta:
+  last_updated: 2025-01-01
+  source_repo: https://github.com/<your-username>/musab_terminal
+
+faq:
+  - q: Who is Musab Ustun?
+    a: Musab Ustun is an 18-year-old Senior Software Engineer and student specializing in full-stack development (React, Next.js, Node.js, TypeScript) with strong interest in scalable architecture and developer experience.
+  - q: What technologies does Musab use?
+    a: React, Next.js, TypeScript, Node.js, TailwindCSS, Vite, Express, and experience with Python/Django.
+  - q: How to reach Musab?
+    a: Email musabyusufustun@outlook.com or via GitHub/LinkedIn links above.
+
+

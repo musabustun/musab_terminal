@@ -12,6 +12,9 @@ const App: React.FC = () => {
   const [isTyping, setIsTyping] = useState(false);
   const [theme, setTheme] = useState<'light' | 'dark'>('dark');
   const [currentDir, setCurrentDir] = useState<string[]>([]); // relative to basePath
+  const [awaitingPassword, setAwaitingPassword] = useState<boolean>(false);
+  const [pendingSudoCommand, setPendingSudoCommand] = useState<string | null>(null);
+  const [sudoAttempts, setSudoAttempts] = useState<number>(0);
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
@@ -292,6 +295,40 @@ const App: React.FC = () => {
     'projects/saas': { dirs: [], files: [] },
   };
 
+  const fileContents: Record<string, string[]> = {
+    'contact.txt': [
+      'Contact Information',
+      '',
+      'Email: musab.ustun@example.com',
+      'GitHub: https://github.com/musabustun',
+      'LinkedIn: https://linkedin.com/in/musabustun',
+      'Website: https://musabustun.dev',
+    ],
+    'README.md': [
+      '# Portfolio Terminal',
+      '',
+      'Interactive portfolio terminal built with React, TypeScript, and TailwindCSS.',
+      '',
+      'Commands: help, about, skills, projects, experience, contact, resume, github, linkedin, theme, echo, history, banner, pwd, ls, cd, date, whoami, open, clear, cat, sudo',
+    ],
+    // Example project readmes (optional)
+    'projects/ecommerce/README.md': ['E-Commerce Platform', 'Tech: React, Node.js, PostgreSQL'],
+  };
+
+  const displayPath = () => `~${currentDir.length ? '/' + currentDir.join('/') : ''}`;
+  const resolvePath = (arg?: string): string => {
+    if (!arg || arg === '~' || arg === '/') return '';
+    if (arg === '.') return currentDir.join('/');
+    if (arg.startsWith('/')) return arg.slice(1);
+    return [...currentDir, arg].join('/');
+  };
+  const getListing = (relPath: string) => directoryListings[relPath];
+  const getNamesForPath = (relPath: string) => {
+    const entry = getListing(relPath);
+    if (!entry) return [] as string[];
+    return [...entry.dirs.map(d => `${d}/`), ...entry.files];
+  };
+
   // Theme: default dark, persist to localStorage, toggle html.dark class
   useEffect(() => {
     const stored = localStorage.getItem('theme');
@@ -321,6 +358,17 @@ const App: React.FC = () => {
     if (lowered === 'clear') {
       setCommandHistory([]);
       return;
+    }
+
+    // sudo
+    if (lowered === 'sudo') {
+      if (args.length === 0) {
+        return typeWriter(['usage: sudo <command>'], { charDelayMs: 0, lineDelayMs: 10 });
+      }
+      setAwaitingPassword(true);
+      setPendingSudoCommand(args.join(' '));
+      setSudoAttempts(0);
+      return typeWriter([`[sudo] password for musab:`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: raw });
     }
 
     // theme
@@ -401,13 +449,12 @@ const App: React.FC = () => {
 
     // ls
     if (lowered === 'ls') {
-      const rel = args[0] === '/' ? '' : args[0] ? [...currentDir, args[0]].join('/') : currentDir.join('/');
-      const key = rel;
-      const entry = directoryListings[key in directoryListings ? key : ''];
-      const items = [
-        ...entry.dirs.map(d => `${d}/`),
-        ...entry.files
-      ];
+      const rel = resolvePath(args[0]);
+      const entry = getListing(rel);
+      if (!entry) {
+        return typeWriter([`ls: ${args[0] || '.'}: No such file or directory`], { charDelayMs: 0, lineDelayMs: 10 });
+      }
+      const items = [...entry.dirs.map(d => `${d}/`), ...entry.files];
       return typeWriter(items.length ? items : ['(empty)'], { charDelayMs: 0, lineDelayMs: 5 });
     }
 
@@ -426,12 +473,26 @@ const App: React.FC = () => {
         setCurrentDir(prev => prev.slice(0, -1));
         return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
       }
-      const next = [...currentDir, target].join('/');
+      const next = resolvePath(target);
       if (directoryListings[next]) {
-        setCurrentDir(prev => [...prev, target]);
+        setCurrentDir(next ? next.split('/') : []);
         return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
       }
       return typeWriter([`cd: no such file or directory: ${target}`], { charDelayMs: 0, lineDelayMs: 10 });
+    }
+
+    // cat
+    if (lowered === 'cat') {
+      if (!args[0]) return typeWriter(['usage: cat <file>'], { charDelayMs: 0, lineDelayMs: 10 });
+      const rel = resolvePath(args[0]);
+      const isDir = !!getListing(rel);
+      if (isDir) return typeWriter([`cat: ${args[0]}: Is a directory`], { charDelayMs: 0, lineDelayMs: 10 });
+      const content = fileContents[rel] || fileContents[args[0]] || fileContents[`${rel}.txt`] || fileContents[`${rel}.md`];
+      if (!content) {
+        if (rel.endsWith('.pdf')) return typeWriter([`cat: ${args[0]}: binary file (use 'open ${args[0]}')`], { charDelayMs: 0, lineDelayMs: 10 });
+        return typeWriter([`cat: ${args[0]}: No such file or directory`], { charDelayMs: 0, lineDelayMs: 10 });
+      }
+      return typeWriter(content, { charDelayMs: 0, lineDelayMs: 5 });
     }
 
     // help
@@ -449,6 +510,8 @@ const App: React.FC = () => {
         '  resume          Download CV/Resume',
         '  github          Open GitHub profile',
         '  linkedin        Open LinkedIn profile',
+        '  cat <file>      Print file content (.txt/.md)',
+        "  sudo <cmd>      Run a command as superuser",
         '  theme [opt]     Switch theme (dark|light|toggle)',
         '  echo [text]     Print text',
         '  pwd             Show current directory',

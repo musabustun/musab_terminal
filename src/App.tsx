@@ -5,6 +5,7 @@ interface Command {
   input: string;
   output: string[];
   cwd: string;
+  isChat?: boolean;
 }
 
 const App: React.FC = () => {
@@ -272,14 +273,15 @@ const App: React.FC = () => {
 
   const typeWriter = (
     lines: string[],
-    options?: { charDelayMs?: number; lineDelayMs?: number; inputOverride?: string }
+    options?: { charDelayMs?: number; lineDelayMs?: number; inputOverride?: string; isChat?: boolean }
   ) => {
-    const { charDelayMs = 0, lineDelayMs = 10, inputOverride } = options || {};
+    const { charDelayMs = 0, lineDelayMs = 10, inputOverride, isChat = false } = options || {};
     setIsTyping(true);
     const newCommand: Command = {
       input: inputOverride ?? currentInput,
       output: [],
       cwd: displayPath(),
+      isChat,
     };
 
     let currentLine = 0;
@@ -445,7 +447,7 @@ const App: React.FC = () => {
       return typeWriter([
         'n8n AI chat session started.',
         "Type your message. Use '/bye' to exit.",
-      ], { charDelayMs: 0, lineDelayMs: 10 });
+      ], { charDelayMs: 0, lineDelayMs: 10, isChat: true });
     }
 
     // open
@@ -618,7 +620,7 @@ const App: React.FC = () => {
       }
       if (contentType.includes('application/json')) {
         const data = await response.json();
-        const reply = data.reply ?? data.text ?? data.message ?? JSON.stringify(data);
+        const reply = data.output ?? data.reply ?? data.text ?? data.message ?? JSON.stringify(data);
         return String(reply);
       }
       const text = await response.text();
@@ -671,17 +673,20 @@ const App: React.FC = () => {
         // Show the user message as a prompt entry
         setCommandHistory(prev => [
           ...prev,
-          { input: message, output: [], cwd: displayPath() }
+          { input: message, output: [], cwd: displayPath(), isChat: true }
         ]);
 
         // Persist to chat history
         setChatHistory(prev => [...prev, { role: 'user', content: message }]);
 
+        // Disable input until response arrives
+        setIsTyping(true);
+
         // Call n8n agent and show assistant reply
         const reply = await callN8nAgent(message);
         setChatHistory(prev => [...prev, { role: 'assistant', content: reply }]);
         const replyLines = reply.split('\n').map(line => line);
-        typeWriter(replyLines, { charDelayMs: 1, lineDelayMs: 5, inputOverride: '' });
+        typeWriter(replyLines, { charDelayMs: 1, lineDelayMs: 5, inputOverride: '', isChat: true });
         return;
       }
 
@@ -824,11 +829,20 @@ const App: React.FC = () => {
               <div key={index} className="mb-2">
                 {cmd.input && (
                   <div className="flex items-center text-gray-800 dark:text-gray-100">
-                    <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
-                    <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-                    <span className="text-gray-600 dark:text-gray-300">{cmd.cwd}</span>
-                    <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
-                    <span className="ml-1">{cmd.input}</span>
+                    {cmd.isChat ? (
+                      <>
+                        <span className="text-green-500 mr-2">&gt;&gt;&gt;</span>
+                        <span>{cmd.input}</span>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
+                        <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
+                        <span className="text-gray-600 dark:text-gray-300">{cmd.cwd}</span>
+                        <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
+                        <span className="ml-1">{cmd.input}</span>
+                      </>
+                    )}
                   </div>
                 )}
                 {cmd.output.map((line, lineIndex) => (
@@ -841,10 +855,16 @@ const App: React.FC = () => {
 
             {/* Current Input */}
             <form onSubmit={handleSubmit} className="flex items-center">
-              <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
-              <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-              <span className="text-gray-600 dark:text-gray-300">{displayPath()}</span>
-              <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
+              {isChatting ? (
+                <span className="text-green-500">&gt;&gt;&gt;</span>
+              ) : (
+                <>
+                  <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
+                  <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
+                  <span className="text-gray-600 dark:text-gray-300">{displayPath()}</span>
+                  <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
+                </>
+              )}
               <input
                 ref={inputRef}
                 type="text"
@@ -853,7 +873,7 @@ const App: React.FC = () => {
                 onKeyDown={handleKeyDown}
                 disabled={isTyping}
                 className="ml-2 bg-transparent outline-none flex-1 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
-                placeholder={isTyping ? "Processing..." : "Enter command..."}
+                placeholder={isTyping ? "Processing..." : (isChatting ? "Type your message... (/bye to exit)" : "Enter command...")}
               />
               {!isTyping && (
                 <div className="animate-pulse">

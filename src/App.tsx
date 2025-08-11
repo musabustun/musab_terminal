@@ -4,6 +4,7 @@ import { Terminal, User, Folder, Mail, HelpCircle, Code, Briefcase, Sun, Moon } 
 interface Command {
   input: string;
   output: string[];
+  cwd: string;
 }
 
 const App: React.FC = () => {
@@ -249,7 +250,8 @@ const App: React.FC = () => {
     setIsTyping(true);
     const newCommand: Command = {
       input: inputOverride ?? currentInput,
-      output: []
+      output: [],
+      cwd: displayPath(),
     };
 
     let currentLine = 0;
@@ -316,11 +318,24 @@ const App: React.FC = () => {
   };
 
   const displayPath = () => `~${currentDir.length ? '/' + currentDir.join('/') : ''}`;
+  const normalizeRelativePath = (pathStr: string, baseSegments: string[]): string => {
+    const raw = pathStr.trim();
+    if (!raw || raw === '~' || raw === '/') return '';
+    const tokens = raw.startsWith('/') ? raw.slice(1).split('/') : [...baseSegments, ...raw.split('/')];
+    const stack: string[] = [];
+    for (const token of tokens) {
+      if (!token || token === '.') continue;
+      if (token === '..') {
+        if (stack.length) stack.pop();
+        continue;
+      }
+      stack.push(token);
+    }
+    return stack.join('/');
+  };
   const resolvePath = (arg?: string): string => {
-    if (!arg || arg === '~' || arg === '/') return '';
-    if (arg === '.') return currentDir.join('/');
-    if (arg.startsWith('/')) return arg.slice(1);
-    return [...currentDir, arg].join('/');
+    if (arg === undefined) return currentDir.join('/');
+    return normalizeRelativePath(arg, currentDir);
   };
   const getListing = (relPath: string) => directoryListings[relPath];
   const getNamesForPath = (relPath: string) => {
@@ -348,7 +363,7 @@ const App: React.FC = () => {
     const raw = cmd;
     const trimmed = raw.trim();
     if (!trimmed) {
-      setCommandHistory(prev => [...prev, { input: '', output: [] }]);
+      setCommandHistory(prev => [...prev, { input: '', output: [], cwd: displayPath() }]);
       return;
     }
     const [name, ...args] = trimmed.split(/\s+/);
@@ -449,7 +464,7 @@ const App: React.FC = () => {
 
     // ls
     if (lowered === 'ls') {
-      const rel = resolvePath(args[0]);
+      const rel = args[0] ? resolvePath(args[0]) : currentDir.join('/');
       const entry = getListing(rel);
       if (!entry) {
         return typeWriter([`ls: ${args[0] || '.'}: No such file or directory`], { charDelayMs: 0, lineDelayMs: 10 });
@@ -460,25 +475,17 @@ const App: React.FC = () => {
 
     // cd
     if (lowered === 'cd') {
-      const target = args[0] || '';
-      if (!target || target === '~') {
-        setCurrentDir([]);
-        return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
-      }
-      if (target === '/') {
-        setCurrentDir([]);
-        return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
-      }
-      if (target === '..') {
-        setCurrentDir(prev => prev.slice(0, -1));
-        return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
-      }
+      const target = args[0];
       const next = resolvePath(target);
-      if (directoryListings[next]) {
-        setCurrentDir(next ? next.split('/') : []);
+      if (next === '') {
+        setCurrentDir([]);
         return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
       }
-      return typeWriter([`cd: no such file or directory: ${target}`], { charDelayMs: 0, lineDelayMs: 10 });
+      if (directoryListings[next]) {
+        setCurrentDir(next.split('/'));
+        return typeWriter([], { charDelayMs: 0, lineDelayMs: 0 });
+      }
+      return typeWriter([`cd: no such file or directory: ${target ?? ''}`], { charDelayMs: 0, lineDelayMs: 10 });
     }
 
     // cat
@@ -535,13 +542,37 @@ const App: React.FC = () => {
     // default: not found
     return setCommandHistory(prev => [
       ...prev,
-      { input: raw, output: [`zsh: command not found: ${raw}`, "Type 'help' to see available commands."] }
+      { input: raw, output: [`zsh: command not found: ${raw}`, "Type 'help' to see available commands."], cwd: displayPath() }
     ]);
   };
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (currentInput.trim() && !isTyping) {
+      // handle sudo password prompt
+      if (awaitingPassword) {
+        const entered = currentInput;
+        setCurrentInput('');
+        if (entered !== 'musab') {
+          const attempts = sudoAttempts + 1;
+          setSudoAttempts(attempts);
+          if (attempts >= 3) {
+            setAwaitingPassword(false);
+            setPendingSudoCommand(null);
+            typeWriter(['sudo: 3 incorrect password attempts'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
+            return;
+          }
+          typeWriter(['Sorry, try again.', `[sudo] password for musab:`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
+          return;
+        }
+        // success
+        setAwaitingPassword(false);
+        setSudoAttempts(0);
+        typeWriter([`musab is not in the sudoers file. This incident will be reported.`], { charDelayMs: 0, lineDelayMs: 10, inputOverride: `sudo ${pendingSudoCommand || ''}` });
+        setPendingSudoCommand(null);
+        return;
+      }
+
       executeCommand(currentInput);
       setCurrentInput('');
     }
@@ -552,6 +583,45 @@ const App: React.FC = () => {
       setCurrentInput(command);
       executeCommand(command);
       setCurrentInput('');
+    }
+  };
+
+  // Tab completion for commands and paths
+  const allCommands = [
+    'help','banner','about','skills','projects','experience','contact','resume','github','linkedin','theme','echo','pwd','ls','cd','date','whoami','open','clear','cat','sudo'
+  ];
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (isTyping) return;
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const value = currentInput;
+      if (!value.trim()) return;
+      const [first, ...rest] = value.split(/\s+/);
+      // complete command
+      if (rest.length === 0) {
+        const matches = allCommands.filter(c => c.startsWith(first));
+        if (matches.length === 1) setCurrentInput(matches[0] + ' ');
+        else if (matches.length > 1) typeWriter(matches, { charDelayMs: 0, lineDelayMs: 5, inputOverride: value });
+        return;
+      }
+      // path completion for ls/cd/cat/open
+      // const cmd = first.toLowerCase(); // currently not used; reserved for future command-specific completion
+      const joinRest = rest.join(' ');
+      const beforeCursor = joinRest; // simple case
+      const token = beforeCursor.split(' ').pop() || '';
+      const base = token.includes('/') ? token.slice(0, token.lastIndexOf('/')) : '';
+      const relBase = resolvePath(base || '.');
+      const names = getNamesForPath(relBase);
+      const partial = token.includes('/') ? token.slice(token.lastIndexOf('/') + 1) : token;
+      const candidates = names.filter(n => n.startsWith(partial));
+      if (candidates.length === 1) {
+        const completed = (base ? base + '/' : '') + candidates[0];
+        const newValue = value.replace(/\s+[^\s]*$/, ' ' + completed + (candidates[0].endsWith('/') ? '' : ''));
+        setCurrentInput(newValue);
+      } else if (candidates.length > 1) {
+        typeWriter(candidates, { charDelayMs: 0, lineDelayMs: 5, inputOverride: value });
+      }
     }
   };
 
@@ -644,7 +714,7 @@ const App: React.FC = () => {
                   <div className="flex items-center text-gray-800 dark:text-gray-100">
                     <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
                     <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-                    <span className="text-gray-600 dark:text-gray-300">~</span>
+                    <span className="text-gray-600 dark:text-gray-300">{cmd.cwd}</span>
                     <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
                     <span className="ml-1">{cmd.input}</span>
                   </div>
@@ -661,13 +731,14 @@ const App: React.FC = () => {
             <form onSubmit={handleSubmit} className="flex items-center">
               <span className="text-gray-600 dark:text-gray-300 font-medium">musab@portfolio</span>
               <span className="text-gray-400 dark:text-gray-400 mx-1">:</span>
-              <span className="text-gray-600 dark:text-gray-300">~</span>
+              <span className="text-gray-600 dark:text-gray-300">{displayPath()}</span>
               <span className="text-gray-400 dark:text-gray-400 mx-1">$</span>
               <input
                 ref={inputRef}
                 type="text"
                 value={currentInput}
                 onChange={(e) => setCurrentInput(e.target.value)}
+                onKeyDown={handleKeyDown}
                 disabled={isTyping}
                 className="ml-2 bg-transparent outline-none flex-1 text-gray-800 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-400"
                 placeholder={isTyping ? "Processing..." : "Enter command..."}

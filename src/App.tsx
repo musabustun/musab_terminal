@@ -405,7 +405,11 @@ const App: React.FC = () => {
 
     // sudo (disabled)
     if (lowered === 'sudo') {
-      return typeWriter(['sudo: işlem red edildi'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: raw });
+      return typeWriter([
+        'sudo: yetkilendirme başarısız',
+        "ERRCODE: EACCES (Permission denied) — kullanıcı 'musab' sudoers dosyasında değil",
+        'Çıkış kodu: 1'
+      ], { charDelayMs: 0, lineDelayMs: 10, inputOverride: raw });
     }
 
     // theme
@@ -629,8 +633,11 @@ const App: React.FC = () => {
       if (awaitingPassword) {
         setCurrentInput('');
         setAwaitingPassword(false);
-        
-        typeWriter(['sudo: işlem red edildi'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
+        typeWriter([
+          'sudo: yetkilendirme başarısız',
+          "ERRCODE: EACCES (Permission denied) — kullanıcı 'musab' sudoers dosyasında değil",
+          'Çıkış kodu: 1'
+        ], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
         return;
       }
 

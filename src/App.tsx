@@ -19,6 +19,12 @@ const App: React.FC = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const terminalRef = useRef<HTMLDivElement>(null);
 
+  // AI chat session state
+  const [isChatting, setIsChatting] = useState<boolean>(false);
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatHistory, setChatHistory] = useState<{ role: 'user' | 'assistant'; content: string }[]>([]);
+  const N8N_WEBHOOK_URL: string | undefined = import.meta.env.VITE_N8N_WEBHOOK_URL as string | undefined;
+
   const asciiArt = `
     ███╗   ███╗██╗   ██╗███████╗ █████╗ ██████╗ 
     ████╗ ████║██║   ██║██╔════╝██╔══██╗██╔══██╗
@@ -33,12 +39,33 @@ const App: React.FC = () => {
   `;
 
   const commands = {
+    ai: {
+      description: "Start AI chat with n8n agent",
+      output: [
+        "$ ai",
+        "",
+        "Starting AI chat session...",
+        "Type your messages to chat with the agent.",
+        "Use '/bye' to exit."
+      ]
+    },
+    chat: {
+      description: "Alias of 'ai' command",
+      output: [
+        "$ chat",
+        "",
+        "Starting AI chat session...",
+        "Type your messages to chat with the agent.",
+        "Use '/bye' to exit."
+      ]
+    },
     help: {
       description: "Show available commands",
       output: [
         "Available commands:",
         "",
         "  help          Show this help message",
+        "  ai            Start AI chat (n8n agent)",
         "  about         Learn about Musab Ustun",
         "  skills        View technical expertise",
         "  projects      Browse portfolio projects",
@@ -403,6 +430,24 @@ const App: React.FC = () => {
       return typeWriter([`Theme: ${arg === 'toggle' ? theme === 'dark' ? 'light' : 'dark' : arg}`], { charDelayMs: 0, lineDelayMs: 10 });
     }
 
+    // ai / chat: start AI chat session via n8n webhook
+    if (lowered === 'ai' || lowered === 'chat') {
+      if (!N8N_WEBHOOK_URL) {
+        return typeWriter([
+          'AI chat unavailable: VITE_N8N_WEBHOOK_URL is not set.',
+          'Set it in your .env file and rebuild the project.'
+        ], { charDelayMs: 0, lineDelayMs: 10 });
+      }
+      const id = `sess_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      setIsChatting(true);
+      setChatSessionId(id);
+      setChatHistory([]);
+      return typeWriter([
+        'n8n AI chat session started.',
+        "Type your message. Use '/bye' to exit.",
+      ], { charDelayMs: 0, lineDelayMs: 10 });
+    }
+
     // open
     if (lowered === 'open' && args[0]) {
       const url = args[0];
@@ -509,6 +554,7 @@ const App: React.FC = () => {
         'Available commands:',
         '',
         '  help            Show this help message',
+        '  ai              Start AI chat (n8n agent)',
         '  banner          Show ASCII banner',
         '  about           Learn about Musab Ustun',
         '  skills          View technical expertise',
@@ -547,7 +593,42 @@ const App: React.FC = () => {
     ]);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Call n8n webhook and return assistant reply text
+  const callN8nAgent = async (message: string): Promise<string> => {
+    if (!N8N_WEBHOOK_URL) {
+      return 'AI chat error: webhook URL is not configured.';
+    }
+    try {
+      const response = await fetch(N8N_WEBHOOK_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json, text/plain;q=0.9,*/*;q=0.8',
+        },
+        body: JSON.stringify({
+          sessionId: chatSessionId,
+          message,
+          history: chatHistory,
+        }),
+      });
+      const contentType = response.headers.get('content-type') || '';
+      if (!response.ok) {
+        const errorText = await response.text().catch(() => '');
+        return `AI chat error: ${response.status} ${response.statusText}${errorText ? ` - ${errorText}` : ''}`;
+      }
+      if (contentType.includes('application/json')) {
+        const data = await response.json();
+        const reply = data.reply ?? data.text ?? data.message ?? JSON.stringify(data);
+        return String(reply);
+      }
+      const text = await response.text();
+      return text || '(empty response)';
+    } catch (err) {
+      return `AI chat error: ${(err as Error).message}`;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (currentInput.trim() && !isTyping) {
       // handle sudo password prompt
@@ -574,6 +655,36 @@ const App: React.FC = () => {
         return;
       }
 
+      // AI chat session handling
+      if (isChatting) {
+        const message = currentInput;
+        setCurrentInput('');
+        // Exit chat on /bye
+        if (message.trim() === '/bye') {
+          setIsChatting(false);
+          setChatSessionId(null);
+          setChatHistory([]);
+          typeWriter(['Chat session ended.'], { charDelayMs: 0, lineDelayMs: 10, inputOverride: '' });
+          return;
+        }
+
+        // Show the user message as a prompt entry
+        setCommandHistory(prev => [
+          ...prev,
+          { input: message, output: [], cwd: displayPath() }
+        ]);
+
+        // Persist to chat history
+        setChatHistory(prev => [...prev, { role: 'user', content: message }]);
+
+        // Call n8n agent and show assistant reply
+        const reply = await callN8nAgent(message);
+        setChatHistory(prev => [...prev, { role: 'assistant', content: reply }]);
+        const replyLines = reply.split('\n').map(line => line);
+        typeWriter(replyLines, { charDelayMs: 1, lineDelayMs: 5, inputOverride: '' });
+        return;
+      }
+
       executeCommand(currentInput);
       setCurrentInput('');
     }
@@ -589,7 +700,7 @@ const App: React.FC = () => {
 
   // Tab completion for commands and paths
   const allCommands = [
-    'help','banner','about','skills','projects','experience','contact','resume','github','linkedin','theme','echo','pwd','ls','cd','date','whoami','open','clear','cat','sudo'
+    'help','banner','ai','chat','about','skills','projects','experience','contact','resume','github','linkedin','theme','echo','pwd','ls','cd','date','whoami','open','clear','cat','sudo'
   ];
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

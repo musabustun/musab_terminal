@@ -36,9 +36,11 @@ notable_projects:
   - Mobile-First SaaS (Next.js, TypeScript, Prisma): multi-tenant, responsive UI
 
 contact:
-  email: musab.ustun@example.com
+  email: musabyusufustun@outlook.com
+  phone: "+90 (544) 720 43 65"
   github: https://github.com/musabustun
-  linkedin: https://linkedin.com/in/musabustun
+  linkedin: https://www.linkedin.com/in/musabustun/
+  instagram: https://www.instagram.com/musabust
   website: https://musabustun.xyz
 
 meta:

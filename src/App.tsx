@@ -159,11 +159,12 @@ const App: React.FC = () => {
       output: [
         "$ contact --info",
         "",
-        "📧 Email:     musab.ustun@example.com",
-        "🐙 GitHub:    github.com/musabustun",
-        "💼 LinkedIn:  linkedin.com/in/musabustun",
-        "🌐 Website:   musabustun.dev",
-        "📱 Phone:     +90 XXX XXX XX XX",
+        "📧 Email:     musabyusufustun@outlook.com",
+        "🐙 GitHub:    @https://github.com/musabustun",
+        "💼 LinkedIn:  @https://www.linkedin.com/in/musabustun/",
+        "📸 Instagram: @https://www.instagram.com/musabust",
+        "🌐 Website:   musabustun.xyz",
+        "📱 Phone:     +90 (544) 720 43 65",
         "",
         "Available for:",
         "• Full-time opportunities",
@@ -213,7 +214,7 @@ const App: React.FC = () => {
     linkedin: {
       description: "Open LinkedIn profile",
       output: [
-        "$ open https://linkedin.com/in/musabustun",
+        "$ open https://www.linkedin.com/in/musabustun/",
         "",
         "💼 Opening LinkedIn profile...",
         "",
